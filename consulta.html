@@ -1,0 +1,114 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Consulta de Inquilino</title>
+<link rel="stylesheet" href="styles.css"/>
+<script defer src="app.js"></script>
+<script defer>
+function showMessage(ok, msg){
+  const box = document.getElementById('resultado');
+  box.innerHTML = `<span class="badge ${ok?'ok':'err'}">${msg}</span>`;
+}
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const db = await initDB();
+  const form = document.getElementById('form');
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+
+    const dpi = form.dpi.value.trim();
+    const casa = parseInt(form.numero_casa.value, 10);
+    const nombre = form.primer_nombre.value.trim();
+    const apellido = form.primer_apellido.value.trim();
+    const fnac = form.fecha_nacimiento.value;
+    if(!/^\d{13}$/.test(dpi)){ showMessage(false, 'DPI inválido (13 dígitos).'); return; }
+    if(!casa || casa<=0){ showMessage(false, 'Número de casa inválido.'); return; }
+    if(nombre.length<2 || apellido.length<2){ showMessage(false, 'Nombre y apellido requeridos.'); return; }
+    if(!fnac){ showMessage(false, 'Fecha de nacimiento requerida.'); return; }
+
+    const rows = q(db, `
+      SELECT * FROM Inquilino
+      WHERE dpi=? AND numero_casa=? AND primer_nombre=? AND primer_apellido=? AND fecha_nacimiento=?
+    `, [dpi, casa, nombre, apellido, fnac]);
+    if(rows.length===0){ showMessage(false, 'Datos no coinciden con ningún inquilino.'); return; }
+
+    const now = new Date();
+    const anio = now.getFullYear();
+    const mes = now.getMonth()+1;
+    const pagos = q(db, 'SELECT * FROM PagoDeCuotas WHERE numero_casa=? AND anio=? AND mes=?', [casa, anio, mes]);
+    if(pagos.length>0){
+      showMessage(true, 'Cuota de mantenimiento al día ✓');
+    }else{
+      showMessage(false, 'Cuota de mantenimiento pendiente ✗');
+    }
+  });
+
+  const hform = document.getElementById('hist');
+  hform.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const casa = parseInt(hform.hnum.value, 10);
+    const a1 = parseInt(hform.a1.value, 10);
+    const a2 = parseInt(hform.a2.value, 10);
+    if(!casa){ alert('Ingresa No. de casa'); return; }
+    const rows = q(db, 'SELECT anio, mes, fecha_pago FROM PagoDeCuotas WHERE numero_casa=? AND anio BETWEEN ? AND ? ORDER BY anio DESC, mes DESC', [casa, a1||2000, a2||3000]);
+    const tbody = document.querySelector('#histTable tbody');
+    tbody.innerHTML='';
+    rows.forEach(r=>{
+      const tr = el(`<tr><td>${r.anio}</td><td>${r.mes}</td><td>${r.fecha_pago}</td></tr>`);
+      tbody.appendChild(tr);
+    });
+  });
+});
+</script>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="index.html">Inicio</a>
+      <a href="calendar.html">Calendario</a>
+      <a href="consulta.html">Consulta de inquilino</a>
+    </nav>
+
+    <div class="grid grid-cols-2">
+      <div class="card">
+        <h1>Consulta de inquilino</h1>
+        <form id="form" class="grid">
+          <label>DPI
+            <input name="dpi" inputmode="numeric" maxlength="13" placeholder="13 dígitos" required/>
+          </label>
+          <label>Número de Casa
+            <input name="numero_casa" type="number" min="1" required/>
+          </label>
+          <label>Primer Nombre
+            <input name="primer_nombre" required/>
+          </label>
+          <label>Primer Apellido
+            <input name="primer_apellido" required/>
+          </label>
+          <label>Fecha de Nacimiento
+            <input name="fecha_nacimiento" type="date" required/>
+          </label>
+          <button type="submit">Consultar</button>
+        </form>
+        <div id="resultado" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card">
+        <h2>Historial de pagos (opcional)</h2>
+        <form id="hist" style="display:flex; gap:8px; flex-wrap:wrap; align-items:end">
+          <label>No. Casa<br><input name="hnum" type="number" min="1"/></label>
+          <label>Año desde<br><input name="a1" type="number" min="2000" max="3000"/></label>
+          <label>Año hasta<br><input name="a2" type="number" min="2000" max="3000"/></label>
+          <button type="submit">Buscar</button>
+        </form>
+        <table class="table" id="histTable" style="margin-top:10px">
+          <thead><tr><th>Año</th><th>Mes</th><th>Fecha de pago</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,89 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Calendario de Actividades</title>
+<link rel="stylesheet" href="styles.css"/>
+<script defer src="app.js"></script>
+<script defer>
+async function renderCalendar(y, m){
+  const db = await initDB();
+  const first = new Date(y, m-1, 1);
+  const lastDay = new Date(y, m, 0).getDate();
+  const startWeekday = (first.getDay()+6)%7; 
+  const cal = document.getElementById('cal');
+  cal.innerHTML='';
+  for(let i=0;i<startWeekday;i++){ cal.appendChild(el('<div></div>')); }
+
+  const ym = first.toISOString().slice(0,7); // YYYY-MM
+  const eventos = q(db, `
+    SELECT id, fecha, titulo, descripcion
+    FROM Calendario
+    WHERE substr(fecha,1,7)=?
+    ORDER BY date(fecha) ASC
+  `, [ym]);
+  const byDay = {};
+  eventos.forEach(e=>{
+    const d = parseInt(e.fecha.slice(8,10),10);
+    (byDay[d]||(byDay[d]=[])).push(e);
+  });
+
+  for(let d=1; d<=lastDay; d++){
+    const cell = el('<div class="day"></div>');
+    cell.appendChild(el('<div class="date">'+d+'</div>'));
+    (byDay[d]||[]).forEach(ev=>{
+      const a = el(`<a href="#" class="event" data-id="${ev.id}">${ev.titulo}</a>`);
+      a.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const detalle = document.getElementById('detalle');
+        detalle.innerHTML = `<div class="card"><h2>${ev.titulo}</h2><small>${new Date(ev.fecha).toLocaleDateString()}</small><p>${ev.descripcion||''}</p></div>`;
+      });
+      cell.appendChild(a);
+    });
+    cal.appendChild(cell);
+  }
+}
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const today = new Date();
+  const selMes = document.getElementById('mes');
+  const selAnio = document.getElementById('anio');
+  // fill selects
+  for(let m=1;m<=12;m++){ selMes.appendChild(el(`<option value="${m}">${m}</option>`)); }
+  const year = today.getFullYear();
+  for(let a=year-1;a<=year+1;a++){ selAnio.appendChild(el(`<option value="${a}">${a}</option>`)); }
+  selMes.value = today.getMonth()+1;
+  selAnio.value = year;
+  const load = ()=>renderCalendar(parseInt(selAnio.value), parseInt(selMes.value));
+  selMes.addEventListener('change', load);
+  selAnio.addEventListener('change', load);
+  load();
+});
+</script>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="index.html">Inicio</a>
+      <a href="calendar.html">Calendario</a>
+      <a href="consulta.html">Consulta de inquilino</a>
+    </nav>
+
+    <div class="grid grid-cols-2">
+      <div class="card">
+        <h1>Calendario del mes</h1>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px">
+          <label>Mes</label><select id="mes"></select>
+          <label>Año</label><select id="anio"></select>
+        </div>
+        <div class="calendar" id="cal" aria-live="polite"></div>
+      </div>
+      <div id="detalle" class="card">
+        <h2>Detalle del evento</h2>
+        <p class="muted">Selecciona un evento en el calendario.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
