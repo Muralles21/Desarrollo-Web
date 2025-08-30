@@ -1,0 +1,72 @@
+
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Alamedas de Santa Ana - Portal</title>
+<link rel="stylesheet" href="styles.css"/>
+<script defer src="app.js"></script>
+<script defer>
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const db = await initDB();
+
+  const noticias = q(db, `
+    SELECT fecha, titulo, contenido
+    FROM Noticias
+    ORDER BY date(fecha) DESC
+    LIMIT 3
+  `);
+  const list = document.getElementById('news');
+  noticias.forEach(n=>{
+    const item = el(`<div class="card">
+      <h3>${n.titulo}</h3>
+      <small>${new Date(n.fecha).toLocaleDateString()}</small>
+      <p>${n.contenido}</p>
+    </div>`);
+    list.appendChild(item);
+  });
+});
+</script>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <a href="index.html">Inicio</a>
+      <a href="calendar.html">Calendario</a>
+      <a href="consulta.html">Consulta de inquilino</a>
+    </nav>
+
+    <section class="grid grid-cols-2">
+      <div class="card">
+        <h1>Residencial Alamedas de Santa Ana</h1>
+        <p>Portal informativo para vecinos e inquilinos. Sitio responsivo construido con HTML5, CSS3 y SQLite ejecutado en el navegador mediante <code>sql.js</code>.</p>
+        <h2>Equipo</h2>
+        <ul>
+          <li>Integrante 1 – Ana García</li>
+          <li>Integrante 2 – Luis Pérez</li>
+          <li>Integrante 3 – María López</li>
+        </ul>
+        <h2>Descripción</h2>
+        <p>Conoce noticias, actividades del mes y consulta el estado de tu cuota de mantenimiento.</p>
+        <h2>Ubicación</h2>
+        <p>Guatemala, Mixco. <a href="https://maps.google.com" target="_blank" rel="noopener">Ver mapa</a></p>
+      </div>
+      <div class="card">
+        <h2>Galería</h2>
+        <video controls width="100%" style="border-radius:12px;margin-bottom:10px">
+          <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4">
+        </video>
+        <img src="https://images.unsplash.com/photo-1523217582562-09d0def993a6?q=80&w=1200&auto=format&fit=crop" alt="Residencial" style="width:100%;border-radius:12px"/>
+      </div>
+    </section>
+
+    <section style="margin-top:18px">
+      <h2>Noticias recientes</h2>
+      <div id="news" class="grid"></div>
+    </section>
+
+    <p class="footer">© 2025 Alamedas de Santa Ana</p>
+  </div>
+</body>
+</html>
